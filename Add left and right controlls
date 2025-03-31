@@ -1,0 +1,104 @@
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
+
+// Pin Definitions
+#define GPIO_PIN_13 13
+#define GPIO_PIN_23 23
+
+// BLE Service and Characteristic UUIDs
+#define SERVICE_UUID        "12345678-1234-1234-1234-1234567890ab"
+#define CHARACTERISTIC_UUID "abcd1234-abcd-abcd-abcd-abcdabcdabcd"
+
+// BLE Variables
+BLECharacteristic *pCharacteristic;
+bool deviceConnected = false;
+std::string lastValue = ""; // Store last received value
+
+// BLE Server Callbacks
+class MyServerCallbacks: public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer) {
+    deviceConnected = true;
+    Serial.println("Device connected");
+  }
+
+  void onDisconnect(BLEServer *pServer) {
+    deviceConnected = false;
+    Serial.println("Device disconnected.");
+    lastValue = "";  // Reset last value when disconnected
+  }
+};
+
+// Setup GPIO pins
+void setup() {
+  Serial.begin(115200);
+
+  // Initialize GPIO pins as OUTPUT
+  pinMode(GPIO_PIN_13, OUTPUT);
+  pinMode(GPIO_PIN_23, OUTPUT);
+
+  // Ensure both pins start OFF
+  digitalWrite(GPIO_PIN_13, LOW);
+  digitalWrite(GPIO_PIN_23, LOW);
+
+  // Initialize BLE
+  BLEDevice::init("ESP32_Dabble_Control");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  
+  pCharacteristic = pService->createCharacteristic(
+                      CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_READ |
+                      BLECharacteristic::PROPERTY_WRITE
+                    );
+  
+  pCharacteristic->setValue("");  // Initial value
+  pService->start();
+
+  BLEAdvertising *pAdvertising = pServer->getAdvertising();
+  pAdvertising->start();
+  Serial.println("Waiting for a client connection...");
+}
+
+// Loop to check received commands and control GPIO accordingly
+void loop() {
+  if (deviceConnected) {
+    // Read the latest value from the BLE characteristic
+    std::string value = pCharacteristic->getValue();
+
+    // Check if the value has changed
+    if (value != lastValue) {
+      lastValue = value; // Update the last known value
+
+      if (value == "forward") {
+        digitalWrite(GPIO_PIN_13, HIGH);  // Activate GPIO 13
+        digitalWrite(GPIO_PIN_23, HIGH);  // Activate GPIO 23
+        Serial.println("Forward button held. GPIO 13 and 23 activated.");
+      } 
+      else if (value == "left") {
+        digitalWrite(GPIO_PIN_13, LOW);   // Ensure GPIO 13 is OFF
+        digitalWrite(GPIO_PIN_23, HIGH);  // Activate GPIO 23
+        Serial.println("Left button held. GPIO 23 activated.");
+      } 
+      else if (value == "right") {
+        digitalWrite(GPIO_PIN_13, HIGH);  // Activate GPIO 13
+        digitalWrite(GPIO_PIN_23, LOW);   // Ensure GPIO 23 is OFF
+        Serial.println("Right button held. GPIO 13 activated.");
+      } 
+      else {
+        digitalWrite(GPIO_PIN_13, LOW);   // Reset GPIO 13
+        digitalWrite(GPIO_PIN_23, LOW);   // Reset GPIO 23
+        Serial.println("No button held. GPIO 13 and 23 deactivated.");
+      }
+    }
+  } else {
+    // Ensure both pins are OFF when disconnected
+    digitalWrite(GPIO_PIN_13, LOW);
+    digitalWrite(GPIO_PIN_23, LOW);
+  }
+
+  delay(50);  // Reduce delay for more responsive button handling
+}
