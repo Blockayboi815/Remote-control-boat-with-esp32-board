@@ -1,0 +1,19 @@
+#define BUTTON_PIN 13  // Button connected to GPIO 13
+#define OUTPUT_PIN 23  // Output connected to GPIO 23
+
+void setup() {
+    pinMode(BUTTON_PIN, INPUT_PULLUP);  // Enable internal pull-up resistor
+    pinMode(OUTPUT_PIN, OUTPUT);        // Set pin 23 as output
+    digitalWrite(OUTPUT_PIN, LOW);      // Ensure output is LOW initially
+}
+
+void loop() {
+    // Read button state (LOW when pressed due to pull-up resistor)
+    if (digitalRead(BUTTON_PIN) == LOW) {
+        digitalWrite(OUTPUT_PIN, HIGH); // Supply power to pin 23
+    } else {
+        digitalWrite(OUTPUT_PIN, LOW);  // Turn off pin 23
+    }
+
+    delay(50);  // Debounce delay
+}
