@@ -1,1 +1,57 @@
+#include <DabbleESP32.h>
 
+// Define output pins
+const int pin12 = 12;
+const int pin21 = 21;
+
+// Bluetooth name for Dabble app
+#define CUSTOM_SETTINGS
+#define INCLUDE_GAMEPAD_MODULE
+char btName[] = "Blake_ESP32_Boat";
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(115200);
+
+  // Initialize Dabble Bluetooth
+  Dabble.begin(btName); // Starts Bluetooth with device name
+
+  // Set pin modes
+  pinMode(pin12, OUTPUT);
+  pinMode(pin21, OUTPUT);
+
+  // Set pins LOW initially
+  digitalWrite(pin12, LOW);
+  digitalWrite(pin21, LOW);
+}
+
+void loop() {
+  // Update Dabble status
+  Dabble.processInput();
+
+  // Default state
+  bool fwd = GamePad.isUpPressed();
+  bool left = GamePad.isLeftPressed();
+  bool right = GamePad.isRightPressed();
+
+  // Control pin states
+  if (fwd) {
+    digitalWrite(pin12, HIGH);
+    digitalWrite(pin21, HIGH);
+  }
+  else if (left) {
+    digitalWrite(pin12, LOW);
+    digitalWrite(pin21, HIGH);
+  }
+  else if (right) {
+    digitalWrite(pin12, HIGH);
+    digitalWrite(pin21, LOW);
+  }
+  else {
+    // No button pressed
+    digitalWrite(pin12, LOW);
+    digitalWrite(pin21, LOW);
+  }
+
+  delay(20); // Small delay for stability
+}
