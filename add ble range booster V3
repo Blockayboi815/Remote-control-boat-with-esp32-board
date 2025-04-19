@@ -1,35 +1,36 @@
 #include "DabbleESP32.h"
-#include <esp_bt.h>  // Required for esp_ble_tx_power_set
+#include <esp_bt.h>  // For BLE range boosting
 
 #define FORWARD_LEFT_PIN 21
 #define FORWARD_RIGHT_PIN 12
 #define LED_PIN 22
 
 bool ledState = false;
-bool lastTriangleState = false;
+bool prevTrianglePressed = false;
 
 void setup() {
   Serial.begin(115200);
 
-  // Boost Bluetooth transmission power to maximum
+  // Boost Bluetooth power to max
   esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
 
-  // Setup output pins
+  // Set pin modes
   pinMode(FORWARD_LEFT_PIN, OUTPUT);
   pinMode(FORWARD_RIGHT_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
 
-  Dabble.begin("ESP32-Dabble");  // This name appears in the Dabble app
+  // Start Dabble
+  Dabble.begin("ESP32-Dabble");
 }
 
 void loop() {
-  Dabble.processInput();  // Process Bluetooth input from Dabble app
+  Dabble.processInput();  // Handle BLE input
 
-  // Default state: turn off movement pins unless a direction is pressed
+  // Default: stop all motor pins
   digitalWrite(FORWARD_LEFT_PIN, LOW);
   digitalWrite(FORWARD_RIGHT_PIN, LOW);
 
-  // Movement controls
+  // Movement logic
   if (GamePad.isUpPressed()) {
     digitalWrite(FORWARD_LEFT_PIN, HIGH);
     digitalWrite(FORWARD_RIGHT_PIN, HIGH);
@@ -39,11 +40,11 @@ void loop() {
     digitalWrite(FORWARD_RIGHT_PIN, HIGH);
   }
 
-  // Triangle button toggles LED on pin 22
-  bool currentTriangleState = GamePad.isTrianglePressed();
-  if (currentTriangleState && !lastTriangleState) {
-    ledState = !ledState;
+  // Triangle button toggles LED on/off
+  bool trianglePressed = GamePad.isTrianglePressed();
+  if (trianglePressed && !prevTrianglePressed) {
+    ledState = !ledState;  // Toggle LED state
     digitalWrite(LED_PIN, ledState ? HIGH : LOW);
   }
-  lastTriangleState = currentTriangleState;
+  prevTrianglePressed = trianglePressed;  // Save state for next loop
 }
