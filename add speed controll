@@ -1,0 +1,111 @@
+#include <DabbleESP32.h>
+
+const int motorPin1 = 12; // Left motor
+const int motorPin2 = 21; // Right motor
+const int ledPin = 22;    // Onboard LED
+
+// Speed modes (PWM values)
+int speed = 255; // Default to fast (100% speed)
+int slowSpeed = 76;   // 30% speed (slow)
+int mediumSpeed = 178; // 70% speed (medium)
+
+unsigned long lastPress = 0;
+bool isSquareHeld = false;
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(motorPin1, OUTPUT);
+  pinMode(motorPin2, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+
+  Dabble.begin(); // Start the Dabble app
+}
+
+void loop() {
+  Dabble.processInput(); // Get input from Dabble app
+  
+  int upButton = Dabble.getButtonState(UP);
+  int leftButton = Dabble.getButtonState(LEFT);
+  int rightButton = Dabble.getButtonState(RIGHT);
+  int squareButton = Dabble.getButtonState(SQUARE);
+  int triangleButton = Dabble.getButtonState(TRIANGLE);
+  int circleButton = Dabble.getButtonState(CIRCLE);
+
+  // Handle forward motion
+  if (upButton) {
+    analogWrite(motorPin1, speed);
+    analogWrite(motorPin2, speed);
+  }
+  // Handle left turn (right motor only)
+  else if (leftButton) {
+    analogWrite(motorPin1, 0);
+    analogWrite(motorPin2, speed);
+  }
+  // Handle right turn (left motor only)
+  else if (rightButton) {
+    analogWrite(motorPin1, speed);
+    analogWrite(motorPin2, 0);
+  }
+  else {
+    // Stop motors if no direction button is pressed
+    analogWrite(motorPin1, 0);
+    analogWrite(motorPin2, 0);
+  }
+
+  // Handle LED actions
+  if (triangleButton) {
+    digitalWrite(ledPin, HIGH); // LED on for triangle press
+  } 
+  else if (circleButton) {
+    // Flash LED every half second
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastPress >= 500) {
+      lastPress = currentMillis;
+      digitalWrite(ledPin, !digitalRead(ledPin)); // Toggle LED
+    }
+  }
+  else if (squareButton) {
+    // Hold square to cycle through speed mode
+    isSquareHeld = true;
+    // Flash speed indicator LEDs while holding square button
+    if (speed == 255) {
+      flashLED(5); // Fast = 5 flashes
+    }
+    else if (speed == 178) {
+      flashLED(3); // Medium = 3 flashes
+    }
+    else if (speed == 76) {
+      flashLED(1); // Slow = 1 flash
+    }
+  } 
+  else {
+    // No button pressed, solid LED mode
+    if (!isSquareHeld) {
+      digitalWrite(ledPin, LOW); // Default light behavior
+    }
+  }
+
+  // Change speed mode when square button is pressed and released
+  if (!squareButton && isSquareHeld) {
+    // Cycle speed modes when square button is released
+    if (speed == 255) {
+      speed = 76;  // Slow
+    } else if (speed == 76) {
+      speed = 178; // Medium
+    } else if (speed == 178) {
+      speed = 255; // Fast
+    }
+    isSquareHeld = false; // Reset square button hold state
+  }
+}
+
+// Function to flash LED n times
+void flashLED(int flashes) {
+  for (int i = 0; i < flashes; i++) {
+    digitalWrite(ledPin, HIGH);
+    delay(250); // Keep LED on for 250ms
+    digitalWrite(ledPin, LOW);
+    delay(250); // Keep LED off for 250ms
+  }
+}
